@@ -75,11 +75,13 @@ css = unlines
 -- | Miso application
 app :: Component Model Action
 app = (component (Model mempty) updateModel viewModel)
+#ifndef WASM
   { styles =
-      [ Href "https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css"
-      , Style css
+      [ Style css
+      , Href "https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css"
       ]
   }
+#endif
 ----------------------------------------------------------------------------
 -- | Update function
 updateModel :: Action -> Effect Model Action
