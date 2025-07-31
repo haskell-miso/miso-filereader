@@ -14,9 +14,7 @@
 ----------------------------------------------------------------------------
 module Main where
 ----------------------------------------------------------------------------
-import           Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import           Control.Monad (void)
-import           Control.Monad.IO.Class (liftIO)
 import           Language.Javascript.JSaddle ((!), (!!), (#), JSVal, (<#))
 import qualified Language.Javascript.JSaddle as J
 import           Prelude hiding ((!!), null, unlines)
