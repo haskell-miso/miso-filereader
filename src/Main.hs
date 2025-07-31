@@ -85,7 +85,7 @@ app = (component (Model mempty) updateModel viewModel)
 ----------------------------------------------------------------------------
 -- | Update function
 updateModel :: Action -> Effect Model Action
-updateModel (ReadFile fileReaderInput) = withSink $ \sink -> do
+updateModel (ReadFile fileReaderInput) = M.withSink $ \sink -> do
   file <- fileReaderInput ! ("files" :: MisoString) !! 0
   reader <- J.new (J.jsg ("FileReader" :: MisoString)) ([] :: [JSVal])
   (reader <# ("onload" :: MisoString)) =<< do
