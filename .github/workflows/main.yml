@@ -4,6 +4,7 @@ name: Build and deploy
 on:
   push:
     branches: main
+  pull_request:    
 
 permissions:
   contents: read
