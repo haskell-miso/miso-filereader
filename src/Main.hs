@@ -85,20 +85,18 @@ app = (component (Model mempty) updateModel viewModel)
 ----------------------------------------------------------------------------
 -- | Update function
 updateModel :: Action -> Effect Model Action
-updateModel (ReadFile fileReaderInput) = io $ do
-  file <- fileReaderInput ! ("files" :: String) !! 0
-  reader <- J.new (J.jsg ("FileReader" :: String)) ([] :: [JSVal])
-  mvar <- liftIO newEmptyMVar
-  (reader <# ("onload" :: String)) =<< do
+updateModel (ReadFile fileReaderInput) = M.withSink $ \sink -> do
+  file <- fileReaderInput ! ("files" :: MisoString) !! 0
+  reader <- J.new (J.jsg ("FileReader" :: MisoString)) ([] :: [JSVal])
+  (reader <# ("onload" :: MisoString)) =<< do
     M.asyncCallback $ do
-      result <- J.fromJSValUnchecked =<< reader ! ("result" :: String)
-      liftIO (putMVar mvar result)
-  void $ reader # ("readAsText" :: String) $ [file]
-  SetContent <$> liftIO (readMVar mvar)
+      result <- J.fromJSValUnchecked =<< reader ! ("result" :: MisoString)
+      sink (SetContent result)
+  void $ reader # ("readAsText" :: MisoString) $ [file]
 updateModel (SetContent c) = info .= c
 updateModel (ClickInput button) = io_ $ do
   fileReader <- button ! ("nextSibling" :: MisoString) -- dmj: gets hidden input
-  void $ fileReader # ("click" :: String) $ ([] :: [JSVal])
+  void $ fileReader # ("click" :: MisoString) $ ([] :: [JSVal])
 ----------------------------------------------------------------------------
 -- | View function
 viewModel :: Model -> View Action
