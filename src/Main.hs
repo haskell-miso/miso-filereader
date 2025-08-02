@@ -85,13 +85,15 @@ app = (component (Model mempty) updateModel viewModel)
 -- | Update function
 updateModel :: Action -> Effect Model Action
 updateModel (ReadFile input) = M.withSink $ \sink -> do
-  file <- input ! ("files" :: MisoString) !! 0
+  files_ <- files input
   reader <- J.new (J.jsg ("FileReader" :: MisoString)) ([] :: [JSVal])
   (reader <# ("onload" :: MisoString)) =<< do
     M.asyncCallback $ do
       result <- J.fromJSValUnchecked =<< reader ! ("result" :: MisoString)
       sink (SetContent result)
-  void $ reader # ("readAsText" :: MisoString) $ [file]
+  case files_ of
+    [] -> consoleLog "No file specified"
+    file : _ -> void $ reader # ("readAsText" :: MisoString) $ [file]
 updateModel (SetContent c) =
   info .= c
 updateModel (ClickInput button) = io_ $ do
