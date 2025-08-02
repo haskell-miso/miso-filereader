@@ -17,7 +17,7 @@ executable app
       -no-hs-main
       -optl-mexec-model=reactor "-optl-Wl,--export=hs_start"
       -ddump-splices
-     cpp-options:
+    cpp-options:
       -DWASM
   default-extensions:
     CPP TemplateHaskell
