@@ -15,11 +15,12 @@
 module Main where
 ----------------------------------------------------------------------------
 import           Control.Monad (void)
+import           Data.Function ((&))
 import           Language.Javascript.JSaddle ((!), (!!), (#), JSVal, (<#))
 import qualified Language.Javascript.JSaddle as J
 import           Prelude hiding ((!!), null, unlines)
 ----------------------------------------------------------------------------
-import           Miso (Component(styles), View,Effect, component, run, CSS(..), startComponent, io, io_)
+import           Miso hiding ((<#))
 import qualified Miso as M
 import           Miso.Lens ((.=), Lens, lens)
 import           Miso.String (MisoString, unlines, null)
@@ -48,7 +49,7 @@ foreign export javascript "hs_start" main :: IO ()
 ----------------------------------------------------------------------------
 -- | Main entry point
 main :: IO ()
-main = run (startComponent app)
+main = run (startApp app)
 ----------------------------------------------------------------------------
 -- | Custom styling
 css :: MisoString
@@ -83,18 +84,19 @@ app = (component (Model mempty) updateModel viewModel)
 ----------------------------------------------------------------------------
 -- | Update function
 updateModel :: Action -> Effect Model Action
-updateModel (ReadFile fileReaderInput) = M.withSink $ \sink -> do
-  file <- fileReaderInput ! ("files" :: MisoString) !! 0
+updateModel (ReadFile input) = M.withSink $ \sink -> do
+  file <- input ! ("files" :: MisoString) !! 0
   reader <- J.new (J.jsg ("FileReader" :: MisoString)) ([] :: [JSVal])
   (reader <# ("onload" :: MisoString)) =<< do
     M.asyncCallback $ do
       result <- J.fromJSValUnchecked =<< reader ! ("result" :: MisoString)
       sink (SetContent result)
   void $ reader # ("readAsText" :: MisoString) $ [file]
-updateModel (SetContent c) = info .= c
+updateModel (SetContent c) =
+  info .= c
 updateModel (ClickInput button) = io_ $ do
-  fileReader <- button ! ("nextSibling" :: MisoString) -- dmj: gets hidden input
-  void $ fileReader # ("click" :: MisoString) $ ([] :: [JSVal])
+  input <- nextSibling button
+  input & click ()
 ----------------------------------------------------------------------------
 -- | View function
 viewModel :: Model -> View Action
@@ -158,3 +160,4 @@ viewModel Model{..} =
       ]
     ]
   ]
+----------------------------------------------------------------------------
