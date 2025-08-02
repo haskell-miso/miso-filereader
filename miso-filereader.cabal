@@ -3,11 +3,21 @@ name:                   miso-filereader
 version:                0.1
 
 executable app
-  hs-source-dirs:       src
-  main-is:              Main.hs
-  build-depends:        base, jsaddle, miso
-  default-language:     GHC2021
-  ghc-options:          -Wall -no-hs-main -optl-mexec-model=reactor "-optl-Wl,--export=hs_start" -ddump-splices
-  cpp-options:          -DWASM
-  default-extensions:   CPP TemplateHaskell
- 
+  hs-source-dirs:
+    src
+  main-is:
+    Main.hs
+  build-depends:
+    base, miso, jsaddle
+  default-language:
+    GHC2024
+  if arch(wasm32)
+    ghc-options:
+      -Wall
+      -no-hs-main
+      -optl-mexec-model=reactor "-optl-Wl,--export=hs_start"
+      -ddump-splices
+     cpp-options:
+      -DWASM
+  default-extensions:
+    CPP TemplateHaskell
