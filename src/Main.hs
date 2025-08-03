@@ -72,7 +72,7 @@ css = unlines
   ]
 ----------------------------------------------------------------------------
 -- | Miso application
-app :: Component Model Action
+app :: App Model Action
 app = (component (Model mempty) updateModel viewModel)
 #ifndef WASM
   { styles =
@@ -83,7 +83,7 @@ app = (component (Model mempty) updateModel viewModel)
 #endif
 ----------------------------------------------------------------------------
 -- | Update function
-updateModel :: Action -> Effect Model Action
+updateModel :: Action -> Transition Model Action
 updateModel (ReadFile input) = M.withSink $ \sink -> do
   files_ <- files input
   reader <- J.new (J.jsg ("FileReader" :: MisoString)) ([] :: [JSVal])
@@ -101,7 +101,7 @@ updateModel (ClickInput button) = io_ $ do
   input & click ()
 ----------------------------------------------------------------------------
 -- | View function
-viewModel :: Model -> View Action
+viewModel :: Model -> View Model Action
 viewModel Model{..} =
   M.section_
   [ M.class_ "section"
