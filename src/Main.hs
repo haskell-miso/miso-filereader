@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MultilineStrings  #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Main
@@ -53,23 +54,23 @@ main = run (startApp app)
 ----------------------------------------------------------------------------
 -- | Custom styling
 css :: MisoString
-css = unlines
-  [ ".content-container {"
-  , "  min-height: 300px;"
-  , "  display: flex;"
-  , "  flex-direction: column;"
-  , "  justify-content: center;"
-  , "}"
-  , ""
-  , "#codeDisplay {"
-  , "  min-height: 200px;"
-  , "  background-color: #f5f5f5;"
-  , "  border-radius: 4px;"
-  , "  padding: 1rem;"
-  , "  white-space: pre-wrap;"
-  , "  font-family: monospace;"
-  , "}"
-  ]
+css =
+  """
+  .content-container {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  #codeDisplay {
+    min-height: 200px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    padding: 1rem;
+    white-space: pre-wrap;
+    font-family: monospace;
+  }
+  """
 ----------------------------------------------------------------------------
 -- | Miso application
 app :: App Model Action
