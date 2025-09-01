@@ -24,6 +24,8 @@ import           Prelude hiding ((!!), null, unlines)
 ----------------------------------------------------------------------------
 import           Miso hiding ((<#))
 import qualified Miso as M
+import qualified Miso.Html.Property as M
+import qualified Miso.Html.Element as M
 import           Miso.Lens ((.=), Lens, lens)
 import           Miso.String (MisoString, unlines, null)
 import qualified Miso.CSS as CSS
