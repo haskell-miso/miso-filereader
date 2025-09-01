@@ -1,6 +1,7 @@
 -----------------------------------------------------------------------------
 {-# LANGUAGE CPP               #-}
 {-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE MultilineStrings  #-}
@@ -25,7 +26,7 @@ import           Miso hiding ((<#))
 import qualified Miso as M
 import           Miso.Lens ((.=), Lens, lens)
 import           Miso.String (MisoString, unlines, null)
-import qualified Miso.Style as CSS
+import qualified Miso.CSS as CSS
 ----------------------------------------------------------------------------
 -- | Model
 newtype Model
@@ -85,21 +86,24 @@ app = (component (Model mempty) updateModel viewModel)
 ----------------------------------------------------------------------------
 -- | Update function
 updateModel :: Action -> Transition Model Action
-updateModel (ReadFile input) = M.withSink $ \sink -> do
-  files_ <- files input
-  reader <- J.new (J.jsg ("FileReader" :: MisoString)) ([] :: [JSVal])
-  (reader <# ("onload" :: MisoString)) =<< do
-    M.asyncCallback $ do
-      result <- J.fromJSValUnchecked =<< reader ! ("result" :: MisoString)
-      sink (SetContent result)
-  case files_ of
-    [] -> consoleLog "No file specified"
-    file : _ -> void $ reader # ("readAsText" :: MisoString) $ [file]
-updateModel (SetContent c) =
-  info .= c
-updateModel (ClickInput button) = io_ $ do
-  input <- nextSibling button
-  input & click ()
+updateModel = \case
+  ReadFile input ->
+    M.withSink $ \sink -> do
+      files_ <- files input
+      reader <- newFileReader
+      (reader <# ("onload" :: MisoString)) =<< do
+        M.asyncCallback $ do
+          result <- J.fromJSValUnchecked =<< reader ! ("result" :: MisoString)
+          sink (SetContent result)
+    case files_ of
+      [] -> consoleLog "No file specified"
+      file : _ -> void $ reader # ("readAsText" :: MisoString) $ [file]
+  SetContent c ->
+    info .= c
+  ClickInput button ->
+    io_ $ do
+      input <- nextSibling button
+      input & click ()
 ----------------------------------------------------------------------------
 -- | View function
 viewModel :: Model -> View Model Action
