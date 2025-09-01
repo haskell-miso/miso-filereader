@@ -87,7 +87,7 @@ app = (component (Model mempty) updateModel viewModel)
 -- | Update function
 updateModel :: Action -> Transition Model Action
 updateModel = \case
-  ReadFile input ->
+  ReadFile input -> do
     M.withSink $ \sink -> do
       files_ <- files input
       reader <- newFileReader
