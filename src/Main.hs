@@ -26,6 +26,7 @@ import           Miso hiding ((<#))
 import qualified Miso as M
 import qualified Miso.Html.Property as M
 import qualified Miso.Html.Element as M
+import qualified Miso.Html.Event as M
 import           Miso.Lens ((.=), Lens, lens)
 import           Miso.String (MisoString, unlines, null)
 import qualified Miso.CSS as CSS
@@ -89,7 +90,7 @@ app = (component (Model mempty) updateModel viewModel)
 -- | Update function
 updateModel :: Action -> Transition Model Action
 updateModel = \case
-  ReadFile input -> do
+  ReadFile input ->
     M.withSink $ \sink -> do
       files_ <- files input
       reader <- newFileReader
@@ -97,9 +98,9 @@ updateModel = \case
         M.asyncCallback $ do
           result <- J.fromJSValUnchecked =<< reader ! ("result" :: MisoString)
           sink (SetContent result)
-    case files_ of
-      [] -> consoleLog "No file specified"
-      file : _ -> void $ reader # ("readAsText" :: MisoString) $ [file]
+      case files_ of
+        [] -> consoleLog "No file specified"
+        file : _ -> void $ reader # ("readAsText" :: MisoString) $ [file]
   SetContent c ->
     info .= c
   ClickInput button ->
