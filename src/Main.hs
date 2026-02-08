@@ -54,7 +54,7 @@ foreign export javascript "hs_start" main :: IO ()
 ----------------------------------------------------------------------------
 -- | Main entry point
 main :: IO ()
-main = run (startApp app)
+main = startApp app
 ----------------------------------------------------------------------------
 -- | Custom styling
 css :: MisoString
@@ -88,7 +88,7 @@ app = (component (Model mempty) updateModel viewModel)
 #endif
 ----------------------------------------------------------------------------
 -- | Update function
-updateModel :: Action -> Transition Model Action
+updateModel :: Action -> Effect ROOT Model Action
 updateModel = \case
   ReadFile input ->
     M.withSink $ \sink -> do
