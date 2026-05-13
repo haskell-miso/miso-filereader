@@ -18,11 +18,10 @@ module Main where
 ----------------------------------------------------------------------------
 import           Control.Monad (void)
 import           Data.Function ((&))
-import           Language.Javascript.JSaddle ((!), (!!), (#), JSVal, (<#))
-import qualified Language.Javascript.JSaddle as J
 import           Prelude hiding ((!!), null, unlines)
 ----------------------------------------------------------------------------
-import           Miso hiding ((<#))
+import           Miso
+import           Miso.DSL
 import qualified Miso as M
 import qualified Miso.Html.Property as M
 import qualified Miso.Html.Element as M
