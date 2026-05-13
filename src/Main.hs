@@ -95,7 +95,7 @@ updateModel = \case
       reader <- newFileReader
       (reader <# ("onload" :: MisoString)) =<< do
         M.asyncCallback $ do
-          result <- J.fromJSValUnchecked =<< reader ! ("result" :: MisoString)
+          result <- fromJSValUnchecked =<< reader ! ("result" :: MisoString)
           sink (SetContent result)
       case files_ of
         [] -> consoleLog "No file specified"
