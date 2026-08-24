@@ -8,7 +8,7 @@ executable app
   main-is:
     Main.hs
   build-depends:
-    base, miso, jsaddle
+    base, miso
   default-language:
     GHC2024
   if arch(wasm32)

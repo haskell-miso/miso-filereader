@@ -1,10 +1,8 @@
 -----------------------------------------------------------------------------
 {-# LANGUAGE CPP               #-}
-{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE MultilineStrings  #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Main
@@ -16,158 +14,167 @@
 ----------------------------------------------------------------------------
 module Main where
 ----------------------------------------------------------------------------
-import           Control.Monad (void)
-import           Data.Function ((&))
-import           Language.Javascript.JSaddle ((!), (!!), (#), JSVal, (<#))
-import qualified Language.Javascript.JSaddle as J
-import           Prelude hiding ((!!), null, unlines)
+import           Control.Monad      (forM_)
 ----------------------------------------------------------------------------
-import           Miso hiding ((<#))
-import qualified Miso as M
-import qualified Miso.Html.Property as M
-import qualified Miso.Html.Element as M
-import qualified Miso.Html.Event as M
-import           Miso.Lens ((.=), Lens, lens)
-import           Miso.String (MisoString, unlines, null)
-import qualified Miso.CSS as CSS
+import           Miso
+import           Miso.Lens
+import qualified Miso.Html.Element  as H
+import           Miso.Html.Event    (onClick, onChangeWith)
+import qualified Miso.Html.Property as P
+import qualified Miso.String        as S
 ----------------------------------------------------------------------------
--- | Model
-newtype Model
-  = Model
-  { _info :: MisoString
-  } deriving (Eq, Show)
-----------------------------------------------------------------------------
--- | info Lens
-info :: Lens Model MisoString
-info = lens _info $ \r x -> r { _info = x }
-----------------------------------------------------------------------------
--- | Action
-data Action
-  = ReadFile JSVal
-  | SetContent MisoString
-  | ClickInput JSVal
-----------------------------------------------------------------------------
--- | WASM support
 #ifdef WASM
 foreign export javascript "hs_start" main :: IO ()
 #endif
 ----------------------------------------------------------------------------
--- | Main entry point
+-- | What we managed to extract from a file.
+data Preview
+  = TextPreview MisoString  -- ^ first part of a text file
+  | ImagePreview MisoString -- ^ data: URL for an image
+  deriving (Eq, Show)
+----------------------------------------------------------------------------
+data Entry = Entry
+  { entryName :: MisoString
+  , entrySize :: Int
+  , entryMime :: MisoString
+  , entryPreview :: Preview
+  } deriving (Eq, Show)
+----------------------------------------------------------------------------
+newtype Model = Model
+  { _entries :: [Entry]
+  } deriving (Eq, Show)
+----------------------------------------------------------------------------
+entries :: Lens Model [Entry]
+entries = lens _entries $ \m x -> m { _entries = x }
+----------------------------------------------------------------------------
+data Action
+  = ReadFiles DOMRef
+  | Loaded Entry
+  | Clear
+----------------------------------------------------------------------------
 main :: IO ()
-main = run (startApp app)
+main = startApp defaultEvents app
 ----------------------------------------------------------------------------
--- | Custom styling
-css :: MisoString
-css =
-  """
-  .content-container {
-    min-height: 300px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  #codeDisplay {
-    min-height: 200px;
-    background-color: #f5f5f5;
-    border-radius: 4px;
-    padding: 1rem;
-    white-space: pre-wrap;
-    font-family: monospace;
-  }
-  """
-----------------------------------------------------------------------------
--- | Miso application
 app :: App Model Action
-app = (component (Model mempty) updateModel viewModel)
-#ifndef WASM
-  { styles =
-      [ Style css
-      , Href "https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css"
-      ]
-  }
-#endif
+app = component (Model []) updateModel viewModel
 ----------------------------------------------------------------------------
--- | Update function
-updateModel :: Action -> Transition Model Action
+-- | How much of a text file to show.
+previewChars :: Int
+previewChars = 20000
+----------------------------------------------------------------------------
+updateModel :: Action -> Effect context props Model Action
 updateModel = \case
-  ReadFile input ->
-    M.withSink $ \sink -> do
-      files_ <- files input
-      reader <- newFileReader
-      (reader <# ("onload" :: MisoString)) =<< do
-        M.asyncCallback $ do
-          result <- J.fromJSValUnchecked =<< reader ! ("result" :: MisoString)
-          sink (SetContent result)
-      case files_ of
-        [] -> consoleLog "No file specified"
-        file : _ -> void $ reader # ("readAsText" :: MisoString) $ [file]
-  SetContent c ->
-    info .= c
-  ClickInput button ->
-    io_ $ do
-      input <- nextSibling button
-      input & click ()
+  ReadFiles input ->
+    withSink $ \sink -> do
+      picked <- files input
+      forM_ picked $ \file -> do
+        name <- fromJSValUnchecked =<< file ! "name"
+        size <- fromJSValUnchecked =<< file ! "size"
+        mime <- fromJSValUnchecked =<< file ! "type"
+        reader@(FileReader r) <- newFileReader
+        cb <- asyncCallback $ do
+          payload <- fromJSValUnchecked =<< r ! "result"
+          let preview
+                | isImage mime = ImagePreview payload
+                | otherwise    = TextPreview (S.take previewChars payload)
+          sink $ Loaded Entry
+            { entryName = name
+            , entrySize = size
+            , entryMime = mime
+            , entryPreview = preview
+            }
+        setField r "onload" cb
+        _ <- if isImage mime
+          then reader # "readAsDataURL" $ [ file ]
+          else reader # "readAsText" $ [ file ]
+        pure ()
+  Loaded e ->
+    entries %= (e :)
+  Clear ->
+    entries .= []
 ----------------------------------------------------------------------------
--- | View function
-viewModel :: Model -> View Model Action
-viewModel Model{..} =
-  M.section_
-  [ M.class_ "section"
-  ]
-  [ M.div_
-    [ M.class_ "container"
+isImage :: MisoString -> Bool
+isImage = S.isPrefixOf "image/"
+----------------------------------------------------------------------------
+viewModel :: () -> () -> Model -> View () Model Action
+viewModel _ _ m =
+  H.div_
+  [ P.class_ "app" ]
+  [ H.header_
+    [ P.class_ "hero" ]
+    [ H.h1_ [] [ "🍜 📄 ", H.a_ [ P.href_ repoUrl ] [ "miso-filereader" ] ]
+    , H.p_ [ P.class_ "tagline" ]
+      [ "The browser FileReader API from Haskell: pick files and they are "
+      , "read client-side — text gets previewed, images are decoded to data "
+      , "URLs. Nothing is uploaded anywhere."
+      ]
+    , H.a_ [ P.class_ "gh", P.href_ repoUrl ] [ "View source on GitHub" ]
     ]
-    [ M.h1_
-      [ M.class_ "title has-text-centered"
-      ]
-      [ "🍜 Miso File Reader example"
-      ]
-    , M.div_
-      [ M.class_ "columns is-centered mt-5"
-      ]
-      [ M.div_
-        [ M.class_ "column is-narrow content-container"
-        ]
-        [ M.div_
-          [ M.class_ "field"
-          ]
-          [ M.div_
-            [ M.class_ "control"
-            ]
-            [ M.button_
-              [ M.class_ "button is-primary is-large"
-              , M.onClickWith ClickInput
-              ]
-              [ "Select File" ]
-            , M.input_
-              [ CSS.style_ [ CSS.display "none" ]
-              , M.id_ "fileReader"
-              , M.type_ "file"
-              , M.class_ "button is-large"
-              , M.onChangeWith (const ReadFile)
-              ]
-            ]
+  , H.main_
+    []
+    ( [ H.label_
+        [ P.class_ "dropzone" ]
+        [ H.span_ [ P.class_ "dz-icon" ] [ "📂" ]
+        , H.span_ [] [ H.strong_ [] [ "Choose files" ], " — text or images" ]
+        , H.input_
+          [ P.type_ "file"
+          , P.multiple_ True
+          , P.class_ "hidden-input"
+          , onChangeWith (\_ domRef -> ReadFiles domRef)
           ]
         ]
       ]
-    , M.div_
-      [ M.class_ "column content-container"
-      ]
-      [ M.div_
-        [ M.id_ "codeDisplay"
-        , M.class_ "box"
-        ]
-        [ M.p_
-          [ M.class_ "has-text-grey-light"
-          ]
-          [ M.pre_
-            []
-            [ M.text _info
-            ]
-          | not (null _info)
-          ]
-        ]
+      ++ [ H.div_
+           [ P.class_ "toolbar" ]
+           [ H.span_ [ P.class_ "count" ]
+             [ text (ms n <> if n == 1 then " file" else " files") ]
+           , H.button_ [ P.class_ "btn", onClick Clear ] [ "Clear" ]
+           ]
+         | n /= 0
+         ]
+      ++ map entryCard (m ^. entries)
+    )
+  , H.footer_
+    [ P.class_ "foot" ]
+    [ H.p_ []
+      [ "Built with "
+      , H.a_ [ P.href_ "https://github.com/dmjio/miso" ] [ "miso" ]
+      , ", a Haskell web framework — compiled to WebAssembly."
       ]
     ]
   ]
+  where
+    n = length (m ^. entries)
+    repoUrl = "https://github.com/haskell-miso/miso-filereader"
+----------------------------------------------------------------------------
+entryCard :: Entry -> View () Model Action
+entryCard Entry {..} =
+  H.section_
+  [ P.class_ "card" ]
+  [ H.div_
+    [ P.class_ "card-head" ]
+    [ H.h2_ [] [ text entryName ]
+    , H.span_ [ P.class_ "meta" ]
+      [ text (prettySize entrySize)
+      , text (if entryMime == "" then "" else " · " <> entryMime)
+      ]
+    ]
+  , case entryPreview of
+      ImagePreview url ->
+        H.img_ [ P.class_ "img-preview", P.src_ url, P.alt_ entryName ]
+      TextPreview t
+        | t == "" ->
+            H.p_ [ P.class_ "empty" ] [ "(empty or binary file)" ]
+        | otherwise ->
+            H.pre_ [ P.class_ "text-preview" ] [ text t ]
+  ]
+----------------------------------------------------------------------------
+prettySize :: Int -> MisoString
+prettySize n
+  | n < 1024        = ms n <> " B"
+  | n < 1048576     = one (fromIntegral n / 1024) <> " KB"
+  | otherwise       = one (fromIntegral n / 1048576) <> " MB"
+  where
+    one :: Double -> MisoString
+    one x = ms (fromIntegral (round (x * 10) :: Int) / 10 :: Double)
 ----------------------------------------------------------------------------

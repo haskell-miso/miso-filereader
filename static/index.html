@@ -1,29 +1,184 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title> miso-filereader </title>
-  </head>
-
-  <body>
-    <link href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css" rel="stylesheet" />
-    <script src="index.js" type="module"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>miso-filereader — The FileReader API from Haskell</title>
+    <meta name="description" content="The browser FileReader API driven from Haskell compiled to WebAssembly: read files client-side, preview text and render images as data URLs — built with the miso framework, nothing is uploaded.">
+    <link rel="canonical" href="https://filereader.haskell-miso.org/">
+    <meta name="theme-color" content="#101317">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://filereader.haskell-miso.org/">
+    <meta property="og:title" content="miso-filereader — The FileReader API from Haskell">
+    <meta property="og:description" content="Read files entirely client-side with Haskell compiled to WebAssembly: text previews and image thumbnails via the FileReader API.">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="miso-filereader — The FileReader API from Haskell">
+    <meta name="twitter:description" content="Read files entirely client-side with Haskell compiled to WebAssembly, built with miso.">
+    <link rel="icon" href="favicon.ico">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "miso-filereader",
+      "url": "https://filereader.haskell-miso.org/",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Web",
+      "description": "The browser FileReader API driven from Haskell compiled to WebAssembly with the miso framework.",
+      "codeRepository": "https://github.com/haskell-miso/miso-filereader"
+    }
+    </script>
     <style>
-       .content-container {
-         min-height: 300px;
-         display: flex;
-         flex-direction: column;
-         justify-content: center;
-       }
-       #codeDisplay {
-         min-height: 200px;
-         background-color: #f5f5f5;
-         border-radius: 4px;
-         padding: 1rem;
-         white-space: pre-wrap;
-         font-family: monospace;
-       }
+      :root {
+        --bg: #101317;
+        --panel: #191e25;
+        --panel-edge: #2b333f;
+        --text: #e9edf2;
+        --muted: #96a1af;
+        --accent: #4cc38a;
+        --accent-2: #6cb6ff;
+        color-scheme: dark;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f5f7f9;
+          --panel: #ffffff;
+          --panel-edge: #e0e6ec;
+          --text: #1a222c;
+          --muted: #5a6878;
+          --accent: #17845c;
+          --accent-2: #0969da;
+          color-scheme: light;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      .app { max-width: 820px; margin: 0 auto; padding: 1.25rem; }
+      .hero { text-align: center; padding: 2.25rem 0 1.5rem; }
+      .hero h1 { margin: 0 0 .5rem; font-size: clamp(1.9rem, 5vw, 2.8rem); letter-spacing: -.02em; }
+      .hero h1 a { color: var(--text); text-decoration: none; }
+      .hero h1 a:hover { color: var(--accent); }
+      .tagline { margin: 0 auto 1.1rem; max-width: 44rem; color: var(--muted); font-size: 1.05rem; }
+      .gh {
+        display: inline-block;
+        padding: .5rem 1.1rem;
+        border: 1px solid var(--panel-edge);
+        border-radius: 999px;
+        background: var(--panel);
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: .92rem;
+        transition: border-color .15s ease, transform .15s ease;
+      }
+      .gh:hover { border-color: var(--accent); transform: translateY(-1px); }
+      .dropzone {
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        align-items: center;
+        justify-content: center;
+        padding: 2.5rem 1rem;
+        border: 2px dashed var(--panel-edge);
+        border-radius: 16px;
+        background: var(--panel);
+        cursor: pointer;
+        text-align: center;
+        transition: border-color .15s ease, background .15s ease;
+      }
+      .dropzone:hover { border-color: var(--accent); }
+      .dropzone strong { color: var(--accent); }
+      .dz-icon { font-size: 2.2rem; }
+      .hidden-input { display: none; }
+      .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 1rem 0 .25rem;
+      }
+      .count { color: var(--muted); font-size: .9rem; }
+      .btn {
+        padding: .45rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--panel-edge);
+        background: var(--panel);
+        color: var(--text);
+        font-size: .9rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn:hover { border-color: var(--accent); }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--panel-edge);
+        border-radius: 16px;
+        padding: 1.1rem 1.25rem;
+        margin-top: 1rem;
+      }
+      .card-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: .6rem;
+        margin-bottom: .75rem;
+      }
+      .card-head h2 { margin: 0; font-size: 1.05rem; word-break: break-all; }
+      .meta { color: var(--muted); font-size: .85rem; }
+      .text-preview {
+        max-height: 320px;
+        overflow: auto;
+        margin: 0;
+        padding: .9rem;
+        border-radius: 10px;
+        background: var(--bg);
+        border: 1px solid var(--panel-edge);
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: .82rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .img-preview {
+        display: block;
+        max-width: 100%;
+        max-height: 380px;
+        border-radius: 10px;
+        border: 1px solid var(--panel-edge);
+        margin: 0 auto;
+      }
+      .empty { color: var(--muted); font-style: italic; }
+      .foot { text-align: center; color: var(--muted); font-size: .9rem; padding: 2rem 0 1rem; }
+      .foot a { color: var(--accent); text-decoration: none; }
+      .foot a:hover { text-decoration: underline; }
+      body:has(> .app) .boot, body:has(> .stage) .boot { display: none; }
+      .boot {
+        min-height: 100vh;
+        display: flex; flex-direction: column; gap: 1rem;
+        align-items: center; justify-content: center;
+        color: var(--muted);
+      }
+      .boot .spin {
+        width: 42px; height: 42px;
+        border-radius: 50%;
+        border: 3px solid var(--panel-edge);
+        border-top-color: var(--accent);
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @media (max-width: 560px) { .app { padding: .9rem; } }
     </style>
+  </head>
+  <body>
+    <div class="boot">
+      <div class="spin" aria-hidden="true"></div>
+      <p>Loading Haskell WebAssembly&hellip;</p>
+      <noscript>miso-filereader is an interactive WebAssembly demo and needs JavaScript enabled.</noscript>
+    </div>
+    <script src="index.js" type="module"></script>
   </body>
 </html>
